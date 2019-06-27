@@ -2,10 +2,11 @@ import copy
 from .gotypes import Player
 
 class Move():
+    """ターン，着手のクラス．打石，パス，投了のいずれか"""
     def __init__(self, point=None, is_pass=False, is_resign=False):
         assert (point is not None) ^ is_pass ^ is_resign # どれかひとつしか受け付けないってこと
         self.point = point
-        self.is_play = (self.point is not None)
+        self.is_play = (self.point is not None) # 打石であるかどうか
         self.is_pass = is_pass
         self.is_resign = is_resign
         
@@ -21,11 +22,14 @@ class Move():
     @classmethod
     def resign(cls):
         return Move(is_resign=True)
-    
+
 
 class GoString():
+    """石の並び，連のクラス"""
     def __init__(self, color, stones, liberties):
         self.color = color
+
+        # 連を構成する石，および呼吸点はsetとして保持する
         self.stones = set(stones)
         self.liberties = set(liberties)
     
@@ -57,6 +61,7 @@ class GoString():
     
 
 class Board():
+    """石を置くためのルールと取るためのルール"""
     def __init__(self, num_rows, num_cols):
         self.num_rows = num_rows
         self.num_cols = num_cols
@@ -101,10 +106,31 @@ class Board():
             for new_string_point in new_string.stones:
                 self._grid[new_string_point] = new_string
             
-            # 
+            # 隣接する相手の連から，この石の場所の呼吸点を取り除く
             for other_color_string in adjacent_opposite_color:
                 other_color_string.remove_liberty(point)
             
+            # 隣接する相手の連の呼吸点が0になったらその連を取り除く
+            for other_color_string in adjacent_opposite_color:
+                if other_color_string.num_liberties == 0:
+                    self._remove_string(other_color_string)
+
+    def _remove_string(self, string):
+        # 二重ループ，取り除かれる連の各石 -> その石の隣接点
+        for point in string.stones:
+            for neighbor in point.neighbors():
+
+                # 石が取り除かれることによる呼吸点の追加
+                neighbor_string = self._grid.get(neighbor)
+                if neighbor_string is None:
+                    continue
+                if neighbor_string is not string:
+                    # ただし，取り除かれる連：自分自身の呼吸点は追加しない
+                    neighbor_string.add_liberty(point)
+            
+            # 石を取り除く．(石のある点のアクセス先の連をなくす)
+            self._grid[point] = None
+
 
 
     # pointが盤面の範囲内に含まれているか
@@ -119,9 +145,108 @@ class Board():
             return None
         return string.color
     
-    # 盤面上のある点を含む連全体(GoString)を返す．何もなければNone
+    # 盤面上のある点を含む連を返す．何もなければNone
     def get_go_string(self, point):
         string = self._grid.get(point)
         if string is None:
             return None
         return string
+
+
+class GameState():
+    """ゲーム状態: 次のプレイヤー，前のゲーム状態，最後の着手"""
+    def __init__(self, board, next_player, previous, move):
+        self.board = board
+        self.next_player = next_player
+        self.previous = previous
+        self.move = move
+    
+    def apply_move(self, move):
+        # 着手が打石ならば，石を置いたときの盤面の変化を計算
+        if move.is_play:
+            next_board = copy.deepcopy(self.board)
+            next_board.place_stone(self.next_player, move.point)
+        else:
+            # パスや投了ならそのまま
+            next_board = self.board
+        
+        # 新しいゲーム状態を返す
+        return GameState(next_board, self.next_player.other, self, move)
+    
+    @classmethod
+    def new_game(cls, board_size):
+        """ ゲームの初期化 """
+        if isinstance(board_size, int):
+            board_size = (board_size, board_size)
+        board = Board(*board_size)
+        return GameState(board, Player.black, None, None)
+    
+    def is_over(self):
+        """ 終局判定 """
+        # last_moveが未定義(打石した)なら続行
+        if self.last_move is None:
+            return False
+        
+        # どちらかが投了していたら終局
+        if self.last_move.is_resign:
+            return True
+        
+        # 連続でパスされていなければ(前の前の手が打石なら，片方がパスしてても)続行
+        second_last_move = self.previous_state.last_move
+        if second_last_move is None:
+            return False
+        
+        # 連続でパスされていれば終局，そうでなければ続行
+        return self.last_move.is_pass and second_last_move.is_pass
+    
+    def is_move_self_capture(self, player, move):
+        """ 自殺手(自らのある連の呼吸点を全て潰す手)かどうか """
+        if not move.is_play:
+            return False
+        next_board = copy.deepcopy(self.board)
+
+        # 一旦打ってみて，その打った手によってできる連の呼吸点が0かを返す
+        next_board.place_stone(player, move.point)
+        new_string = next_board.get_go_string(move.point)
+        return new_string.num_liberties == 0
+    
+    @property
+    def situation(self):
+        return (self.next_player, self.board)
+    
+    def does_move_violate_ko(self, player, move):
+        if not move.is_play:
+            return False
+        
+        # 新しい打石があるたびに
+        next_board = copy.deepcopy(self.board)
+        next_board.place_stone(player, move.point)
+        next_situation = (player.other, next_board)
+        past_state = self.previous_state
+
+        # 過去の全ての盤を遡り，同じ盤面にならないかを調べる(遅いので後で改良)
+        while past_state is not None:
+            if past_state.situation == next_situation:
+                return True
+            past_state = past_state.previous_state
+
+        # 過去に同じ盤面が存在しないなら劫に違反していない
+        return False
+
+    def is_valid_move(self, move):
+        # すでに終局しているなら次の着手はない
+        if self.is_over():
+            return False
+        
+        # 終局していないなら，パス，もしくは投了を選択することができる
+        if move.is_pass or move.is_resign:
+            return True
+        
+        # 打石の場合は，盤面内への打石で，自殺手でも劫でもないことが必要
+        return (
+            self.board.get(move.point) is None and
+            not self.is_move_self_capture(self.next_player, move) and
+            not self.does_move_violate_ko(self.next_player, move)
+        )
+    
+    
