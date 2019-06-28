@@ -2,7 +2,7 @@ from dlgo import gotypes
 
 COLS = 'ABCDEFGHIJKLMNOPQRST'
 STONE_TO_CHAR = {
-    None: '.',
+    None: '+',
     gotypes.Player.black: 'x',
     gotypes.Player.white: 'o',
 }
@@ -28,4 +28,11 @@ def print_board(board):
             stone = board.get(gotypes.Point(row=row, col=col))  # 全ての点の打石状況を確認
             line.append(STONE_TO_CHAR[stone])
         print('%s%d %s' % (bump, row, ''.join(line)))  # 空白，行番号，行の石
-    print('   ' + ''.join(COLS[:board.num_cols]))  # 列記号，ABCD...
+    print('    ' + ''.join(COLS[:board.num_cols]))  # 列記号，ABCD...
+
+
+def point_from_coords(coords):
+    """ 人間の入力をBoardの座標に変換 ex. C3 -> (3, 3) """
+    col = COLS.index(coords[0]) + 1
+    row = int(coords[1:])
+    return gotypes.Point(row=row, col=col)
