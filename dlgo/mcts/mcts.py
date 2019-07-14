@@ -37,7 +37,7 @@ class MCTSNode(object):
         """
         ロールアウトの統計を更新
         """
-        self.win_counts[winnder] += 1
+        self.win_counts[winner] += 1
         self.num_rollouts += 1
     
     def can_add_child(self):
@@ -113,14 +113,14 @@ class MCTSAgent(Agent):
         best_score = -1
         best_child = None
         for child in node.children:
-            score = uct_score(
+            score = self.uct_score(
                 total_rollouts,
                 child.num_rollouts,
                 child.winning_pct(node.game_state.next_player),
                 self.temperature
             )
             if score > best_score:
-                best_score = uct_score
+                best_score = score
                 best_child = child
         return best_child
 
