@@ -10,7 +10,7 @@ from dlgo.encoders.base import get_encoder_by_name
 
 from dlgo.data.index_processor import KGSIndex
 from dlgo.data.sampling import Sampler
-# from dlgo.data.generator import DataGenerator
+from dlgo.data.generator import DataGenerator
 
 DATA_DIRECTORY = "../datasets/dlgo/kgs"
 
@@ -61,7 +61,7 @@ class GoDataProcessor():
         # setに入っている必要なtar.gzを，未解凍なら解凍        
         for zip_name in zip_names:
             base_name = zip_name.replace('.tar.gz', '')
-            data_file_name = zip_name + data_type
+            data_file_name = base_name + data_type
             if not os.path.isfile(self.data_dir + '/' + data_file_name):
                 self.process_zip(zip_name, data_file_name, indices_by_zip_name[zip_name])
         
@@ -234,7 +234,8 @@ class GoDataProcessor():
         
         return total_examples
     
-    def get_handicap(self, sgf):
+    @staticmethod
+    def get_handicap(sgf):
         """
         sgfファイルの初期ハンディキャップを適用した盤を返す
 
@@ -252,6 +253,7 @@ class GoDataProcessor():
         """
         go_board = Board(19, 19)
         first_move_done = False
+        move = None
         game_state = GameState.new_game(19)
         if sgf.get_handicap() != None and sgf.get_handicap() != 0:
             for setup in sgf.get_root().get_setup_stones():
