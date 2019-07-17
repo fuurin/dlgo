@@ -100,7 +100,7 @@ class ParallelGoDataProcessor(GoDataProcessor):
         cores = multiprocessing.cpu_count()
 
         # 並列処理のコントローラーオブジェクト
-        pool = multiprocessing.Pool(processes=cores)
+        pool = multiprocessing.Pool(processes=cores) # デフォルトはos.cpu_count()
 
         # 選ばれたファイルを非同期で特徴量とラベルに変換して保存
         p = pool.map_async(worker, zips_to_process)
@@ -112,3 +112,6 @@ class ParallelGoDataProcessor(GoDataProcessor):
             pool.terminate()
             pool.join()
             sys.exit(-1)
+        
+        pool.terminate()
+        pool.join()
