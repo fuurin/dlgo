@@ -2,17 +2,18 @@ import numpy as np
 from dlgo.encoders.base import Encoder
 from dlgo.gotypes import Point
 
+
 class OnePlaneEncoder(Encoder):
     def __init__(self, board_size):
-        self.board_width, self.board_height = board_size
+        self.board_width, self.board_height = board_size, board_size
 
         # あとで複数の盤面を持つことになる他のエンコーダと比較するため
         # 便宜上num_planesを1にし，(1, height, width)にエンコードする
         self.num_planes = 1
-    
+
     def name(self):
         return 'oneplane'
-    
+
     def encode(self, game_state):
         board_matrix = np.zeros(self.shape())
         next_player = game_state.next_player
@@ -27,22 +28,23 @@ class OnePlaneEncoder(Encoder):
                 else:
                     board_matrix[0, r, c] = -1
         return board_matrix
-    
+
     def encode_point(self, point):
         """ 盤面上の点(の座標)をflattenした盤面のインデックスに変換 """
         return self.board_width * (point.row - 1) + (point.col - 1)
-    
+
     def decode_point_index(self, index):
         """ flattenした盤面のインデックスを盤面上の点(の座標)に変換"""
         row = index // self.board_width
         col = index % self.board_width
         return Point(row=row+1, col=col+1)
-    
+
     def num_points(self):
         return self.board_width * self.board_height
-    
+
     def shape(self):
         return (self.num_planes, self.board_height, self.board_width)
+
 
 def create(board_size):
     return OnePlaneEncoder(board_size)

@@ -1,7 +1,7 @@
 import numpy as np
 from dlgo import gotypes
 
-COLS = 'ABCDEFGHIJKLMNOPQRST'
+COLS = 'ABCDEFGHJKLMNOPQRST'
 STONE_TO_CHAR = {
     None: '+',
     gotypes.Player.black: 'x',
@@ -39,9 +39,19 @@ def point_from_coords(coords):
     return gotypes.Point(row=row, col=col)
 
 
+def coords_from_point(point):
+    """ Boardの座標から人間の入力形式に変換 ex. (3, 3) -> C3 """
+    return '%s%d' % (
+        COLS[point.col - 1],
+        point.row
+    )
+
+
 # NOTE: MoveAge is only used in chapter 13, and doesn't make it to the main text.
 # This feature will only be implemented in goboard_fast.py so as not to confuse
 # readers in early chapters.
+
+
 class MoveAge():
     def __init__(self, board):
         self.move_ages = - np.ones((board.num_rows, board.num_cols))

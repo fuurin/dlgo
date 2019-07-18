@@ -4,6 +4,7 @@ from dlgo.agent.helpers import is_point_an_eye
 from dlgo.goboard_slow import Move
 from dlgo.gotypes import Point
 
+
 class RandomBot(Agent):
     def select_move(self, game_state):
         """
@@ -22,10 +23,10 @@ class RandomBot(Agent):
                     continue
                 # 候補として追加
                 candidates.append(candidate)
-        
+
         # 打てるところが無ければパス
         if not candidates:
             return Move.pass_turn()
 
-        return Move.play(random.choice(candidates))
-
+        move = Move.play(random.choice(candidates))
+        return move
